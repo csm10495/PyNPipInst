@@ -84,7 +84,7 @@ function InstallPip ($HttpsProxy) {
 	#>
 	if (DownloadPip $HttpsProxy){
 		Write-Host "Installing Pip..."
-		Start-Process -Wait "C:\Python27\python.exe " -ArgumentList ($env:temp + "/get-pip.py")
+		Start-Process -Wait "C:\Python27\python.exe " -ArgumentList ($env:temp + "/get-pip.py") -NoNewWindow
 		Write-Host "Installing Pip... Completed"
 		return $TRUE
 	}
@@ -102,7 +102,7 @@ function InstallModulesFromPip ($HttpsProxy) {
 		$arguments = $arguments + "  --proxy=" + $HttpsProxy
 	}
 
-	Start-Process -Wait "C:\Python27\python.exe" -ArgumentList $arguments
+	Start-Process -Wait "C:\Python27\python.exe" -ArgumentList $arguments -NoNewWindow
 	Write-Host "Installing Modules via Pip... Complete"
 	return $TRUE
 }
