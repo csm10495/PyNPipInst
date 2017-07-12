@@ -3,28 +3,29 @@
 #about A script to install Python 2.7 and Pip in an automated fashion with some picked out modules via Pip.
 
 Param(
-	[string]$HttpsProxy=$FALSE,
+	[string]$Proxy=$FALSE,
 	[bool]$OverwritePython=$TRUE,
 	[bool]$OverwritePip=$TRUE,
 	[bool]$DeletePythonBackups=$FALSE,
 	[bool]$AddToPath=$TRUE,
 	[bool]$InstallModulesWithPip=$TRUE,
 	[bool]$X86Python=$TRUE,
+	[bool]$FallbackTryNoProxy=$FALSE, # If we fail with the proxy try, without
 	[string]$PythonVersion="2.7.13"
 	)
 
 $ErrorActionPreference = "Stop" # Stop on first error
 
-function DownloadPython ($HttpsProxy, $X86Python, $PythonVersion) {
+function DownloadPython ($Proxy, $X86Python, $PythonVersion) {
 	<#
-	DownloadPython($HttpsProxy, $X86Python, $PythonVersion) - Attempts to download Python via the given proxy. Downloading x86 vs x64 depnds on the X86Python parameter.
+	DownloadPython($Proxy, $X86Python, $PythonVersion) - Attempts to download Python via the given proxy. Downloading x86 vs x64 depnds on the X86Python parameter.
 	#>
 	$WebClient = New-Object System.Net.WebClient
 	$DLLocation = $env:temp + "/PythonInstaller.msi"
 
-	if ($HttpsProxy -ne $FALSE){
-		Write-Host ("HttpsProxy is set to (for Python): " + $HttpsProxy)
-		$WebProxy = New-Object System.Net.WebProxy($HttpsProxy ,$TRUE)
+	if ($Proxy -ne $FALSE){
+		Write-Host ("Proxy is set to (for Python): " + $Proxy)
+		$WebProxy = New-Object System.Net.WebProxy($Proxy, $TRUE)
 		$WebClient.Proxy = $WebProxy
 	}
 
@@ -40,16 +41,16 @@ function DownloadPython ($HttpsProxy, $X86Python, $PythonVersion) {
 	return Test-Path $DLLocation -PathType Any # Make sure file downloaded
 }
 
-function DownloadPip ($HttpsProxy) {
+function DownloadPip ($Proxy) {
 	<#
-	DownloadPip($HttpsProxy) - Attempts to download Pip via the given proxy.
+	DownloadPip($Proxy) - Attempts to download Pip via the given proxy.
 	#>
 	$WebClient = New-Object System.Net.WebClient
 	$DLLocation = $env:temp + "/get-pip.py"
 
-	if ($HttpsProxy -ne $FALSE){
-		Write-Host "HttpsProxy is set to (for Pip): " + $HttpsProxy
-		$WebProxy = New-Object System.Net.WebProxy($HttpsProxy ,$TRUE)
+	if ($Proxy -ne $FALSE){
+		Write-Host ("Proxy is set to (for Pip): " + $Proxy)
+		$WebProxy = New-Object System.Net.WebProxy($Proxy ,$TRUE)
 		$WebClient.Proxy = $WebProxy
 	}
 
@@ -59,11 +60,11 @@ function DownloadPip ($HttpsProxy) {
 	return Test-Path $DLLocation -PathType Any # Make sure file downloaded
 }
 
-function InstallPython ($HttpsProxy, $X86Python, $PythonVersion) {
+function InstallPython ($Proxy, $X86Python, $PythonVersion) {
 	<#
-	InstallPython($HttpsProxy, $X86Python, $PythonVersion) - Attempts to install Python via the given proxy. Installing x86 vs x64 depnds on the X86Python parameter.
+	InstallPython($Proxy, $X86Python, $PythonVersion) - Attempts to install Python via the given proxy. Installing x86 vs x64 depnds on the X86Python parameter.
 	#>
-	if (DownloadPython $HttpsProxy $X86Python $PythonVersion){
+	if (DownloadPython $Proxy $X86Python $PythonVersion){
 		$Installer = $env:temp + "/PythonInstaller.msi"
 		Write-Host "Uninstalling old Python..."
 		cmd /c start /wait msiexec /x $Installer /quiet
@@ -78,11 +79,11 @@ function InstallPython ($HttpsProxy, $X86Python, $PythonVersion) {
 	return $FALSE
 }
 
-function InstallPip ($HttpsProxy) {
+function InstallPip ($Proxy) {
 	<#
-	InstallPip($HttpsProxy) - Attempts to install Pip via the given proxy.
+	InstallPip($Proxy) - Attempts to install Pip via the given proxy.
 	#>
-	if (DownloadPip $HttpsProxy){
+	if (DownloadPip $Proxy){
 		Write-Host "Installing Pip..."
 		Start-Process -Wait "C:\Python27\python.exe " -ArgumentList ($env:temp + "/get-pip.py") -NoNewWindow
 		Write-Host "Installing Pip... Completed"
@@ -91,15 +92,15 @@ function InstallPip ($HttpsProxy) {
 	return $FALSE
 }
 
-function InstallModulesFromPip ($HttpsProxy) {
+function InstallModulesFromPip ($Proxy) {
 	<#
-	InstallModulesFromPip($HttpsProxy) - Attempts to install modules via Pip via the given proxy.
+	InstallModulesFromPip($Proxy) - Attempts to install modules via Pip via the given proxy.
 	#>
 	Write-Host "Installing Modules via Pip..."
-	$arguments = "-m pip install wxPython pyserial pytest pypiwin32 pycryptodome xlrd numpy pyreadline pyinstaller psutil pyyaml mkdocs markdown-fenced-code-tabs mock colorama coverage cffi pylint pytest-cov zmq protobuf wmi"
+	$arguments = "-m pip install wget pyserial==2.7 pytest pypiwin32 pycryptodome xlrd numpy pyreadline pyinstaller psutil pyyaml mkdocs markdown-fenced-code-tabs mock colorama coverage cffi pylint pytest-cov zmq protobuf wmi pandas nose paramiko prettytable"
 
-	if ($HttpsProxy -ne $FALSE){
-		$arguments = $arguments + "  --proxy=" + $HttpsProxy
+	if ($Proxy -ne $FALSE){
+		$arguments = $arguments + "  --proxy=" + $Proxy
 	}
 
 	Start-Process -Wait "C:\Python27\python.exe" -ArgumentList $arguments -NoNewWindow
@@ -115,7 +116,7 @@ function BackupOldPython {
 		$ToPath = ("C:\Python27_old_" + (Get-Date).ToString().replace("/", "_").replace(" ", "_").replace(":", "_") + "\")
 		Write-Host "Backing up old Python27 folder to " + $ToPath
 		Move-Item "C:\Python27\" $ToPath
-		return Test-Path $ToPath -PathType Any # Make sure file downloaded
+		return Test-Path $ToPath -PathType Any # Make sure file moved
 	}
 	Write-Host "Python27 folder not found... that is ok. Won't backup."
 	return $FALSE
@@ -143,18 +144,45 @@ if ($PythonVersionSplit.Length -eq 3){
 		if ($DeletePythonBackups -eq $TRUE) {
 			Remove-Item c:\python27_old* -recurse
 		}
-		if ($OverwritePython -eq $TRUE) {
-			BackupOldPython
-			InstallPython $HttpsProxy $X86Python $PythonVersion
+		$Complete = $FALSE
+
+		For ($i=0; $i -le 1; $i++) {
+			Try {
+				if ($OverwritePython -eq $TRUE) {
+					BackupOldPython
+					InstallPython $Proxy $X86Python $PythonVersion
+				}
+				if ($OverwritePip -eq $TRUE) {
+					InstallPip $Proxy
+				}
+				if ($InstallModulesWithPip -eq $TRUE) {
+					InstallModulesFromPip $Proxy
+				}
+				if ($AddToPath -eq $TRUE) {
+					AddPythonToPath
+				}
+				$Complete = $TRUE
+			} Catch {
+				if (($Proxy -ne $FALSE) -and ($FallbackTryNoProxy -ne $FALSE) -and ($i -le 1)) {
+					$FormatString = "Warning: {0} : {1}`n{2}`n" +
+					"    + Warning CategoryInfo          : {3}`n" +
+					"    + Warning FullyQualifiedErrorId : {4}`n"
+					$Fields = $_.InvocationInfo.MyCommand.Name,
+							  $_.ErrorDetails.Message,
+							  $_.InvocationInfo.PositionMessage,
+							  $_.CategoryInfo.ToString(),
+							  $_.FullyQualifiedErrorId
+					Write-Host ($FormatString -f $Fields) # format the exception to print it, but do not throw
+					Write-Host "Because of the above, about to retry without a proxy... since we failed and $FallbackTryNoProxy is set to False"
+					$Proxy = False # try without proxy
+				} else {
+					throw # pass up current exception as we have no way to try again (either don't have FallbackTryNoProxy or $i == 1 (means we tried 0 and 1).
+				}
+			}
 		}
-		if ($OverwritePip -eq $TRUE) {
-			InstallPip $HttpsProxy
-		}
-		if ($InstallModulesWithPip -eq $TRUE) {
-			InstallModulesFromPip $HttpsProxy
-		}
-		if ($AddToPath -eq $TRUE) {
-			AddPythonToPath
+
+		if ($Complete -eq $FALSE) {
+			exit 3 # not complete? something went wrong... though I though it would have thrown above
 		}
 
 		# Done!
@@ -165,7 +193,7 @@ if ($PythonVersionSplit.Length -eq 3){
 		}
 	} else {
 		Write-Host "Only Python 2.7.X is supported!"
-		exit 1
+		exit 2
 	}
 } else {
 	Write-Host "Python version given was invalid, couldn't determine major/minor version"

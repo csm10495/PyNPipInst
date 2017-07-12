@@ -7,7 +7,7 @@
     <RootNamespace>MyApplication</RootNamespace>
     <AssemblyName>MyApplication</AssemblyName>
     <Name>PyNPipInst</Name>
-    <DebugArguments>-HttpsProxy $FALSE -PythonVersion "2.7.7"</DebugArguments>
+    <DebugArguments>-Proxy "10.10.10.10" -FallbackTryNoProxy $TRUE</DebugArguments>
     <ProjectHome />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
