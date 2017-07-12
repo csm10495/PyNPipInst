@@ -183,7 +183,8 @@ if ($PythonVersionSplit.Length -eq 3){
 		}
 
 		if ($Complete -eq $FALSE) {
-			exit 3 # not complete? something went wrong... though I though it would have thrown above
+			Write-Host "This shouldn't be possible but Complete == False... though the loop completed... what?"
+			exit 3 # not complete? something went wrong... though I thought it would have thrown above
 		}
 
 		# Done!
