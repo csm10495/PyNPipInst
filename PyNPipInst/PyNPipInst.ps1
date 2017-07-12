@@ -180,6 +180,9 @@ if ($PythonVersionSplit.Length -eq 3){
 					throw # pass up current exception as we have no way to try again (either don't have FallbackTryNoProxy or $i == 1 (means we tried 0 and 1).
 				}
 			}
+			if ($Complete -eq $TRUE) {
+				break # Done!
+			}
 		}
 
 		if ($Complete -eq $FALSE) {
