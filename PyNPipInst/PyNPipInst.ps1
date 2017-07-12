@@ -148,6 +148,18 @@ function AddPythonToPath {
 
 # 'Main'
 $PythonVersionSplit = $PythonVersion.split(".")
+
+# Qualify the Proxy parameter
+$ProxiesSplit = @()
+if ($Proxy -eq $FALSE){
+	$ProxiesSplit += @($False) #no proxy for one round
+} else {
+	$ProxiesSplit += $Proxy.split(";") # Make sure to use double quotes with inside single quotes in the param "'p1;p2'"
+	if ($FallbackTryNoProxy -eq $TRUE) {
+		$ProxiesSplit += $FALSE # add False value to fallback to not using a proxy
+	}
+}
+
 if ($PythonVersionSplit.Length -eq 3){
 	$PythonMajor = [convert]::ToInt16($PythonVersionSplit[0])
 	$PythonMinor = [convert]::ToInt16($PythonVersionSplit[1])
@@ -155,9 +167,11 @@ if ($PythonVersionSplit.Length -eq 3){
 		if ($DeletePythonBackups -eq $TRUE) {
 			Remove-Item c:\python27_old* -recurse
 		}
+
 		$Complete = $FALSE
-		# todo... allow semicolon list of proxies for this list with fallback to normal at the end
-		For ($i=0; $i -le 1; $i++) {
+
+		For ($i=0; $i -lt $ProxiesSplit.Length; $i++) {
+			$Proxy = $ProxiesSplit[$i] # set proxy value
 			Try {
 				if ($OverwritePython -eq $TRUE) {
 					BackupOldPython
@@ -165,8 +179,10 @@ if ($PythonVersionSplit.Length -eq 3){
 					$OverwritePython = $FALSE # don't do this again if we fail later
 				}
 				if ($OverwritePip -eq $TRUE) {
-					if (InstallPip $Proxy -eq $FALSE) {
+					if ((InstallPip $Proxy) -eq $FALSE) {
 						throw "Pip Install Failed!"
+					} else {
+						$OverwritePip = $FALSE # don't do this again if we fail later
 					}
 				}
 				if ($InstallModulesWithPip -eq $TRUE) {
@@ -177,7 +193,7 @@ if ($PythonVersionSplit.Length -eq 3){
 				}
 				$Complete = $TRUE
 			} Catch {
-				if (($Proxy -ne $FALSE) -and ($FallbackTryNoProxy -ne $FALSE) -and ($i -lt 1)) {
+				if ($Proxy -ne $ProxiesSplit[$ProxiesSplit.Length - 1]) {
 					$FormatString = "Warning: {0} : {1}`n{2}`n" +
 					"    + Warning CategoryInfo          : {3}`n" +
 					"    + Warning FullyQualifiedErrorId : {4}`n"
@@ -187,7 +203,7 @@ if ($PythonVersionSplit.Length -eq 3){
 							  $_.CategoryInfo.ToString(),
 							  $_.FullyQualifiedErrorId
 					Write-Host ($FormatString -f $Fields) # format the exception to print it, but do not throw
-					Write-Host "Because of the above, about to retry without a proxy... since we failed and FallbackTryNoProxy is set to False"
+					Write-Host ("Because of the above, about to retry with " + $ProxiesSplit[$i + 1])
 					$Proxy = $False # try without proxy
 				} else {
 					Write-Host "Failed on final try! About to throw (and fail the script)!"
