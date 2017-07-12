@@ -163,7 +163,7 @@ if ($PythonVersionSplit.Length -eq 3){
 				}
 				$Complete = $TRUE
 			} Catch {
-				if (($Proxy -ne $FALSE) -and ($FallbackTryNoProxy -ne $FALSE) -and ($i -le 1)) {
+				if (($Proxy -ne $FALSE) -and ($FallbackTryNoProxy -ne $FALSE) -and ($i -lt 1)) {
 					$FormatString = "Warning: {0} : {1}`n{2}`n" +
 					"    + Warning CategoryInfo          : {3}`n" +
 					"    + Warning FullyQualifiedErrorId : {4}`n"
@@ -173,9 +173,10 @@ if ($PythonVersionSplit.Length -eq 3){
 							  $_.CategoryInfo.ToString(),
 							  $_.FullyQualifiedErrorId
 					Write-Host ($FormatString -f $Fields) # format the exception to print it, but do not throw
-					Write-Host "Because of the above, about to retry without a proxy... since we failed and $FallbackTryNoProxy is set to False"
+					Write-Host "Because of the above, about to retry without a proxy... since we failed and FallbackTryNoProxy is set to False"
 					$Proxy = False # try without proxy
 				} else {
+					Write-Host "Failed on final try! About to throw (and fail the script)!"
 					throw # pass up current exception as we have no way to try again (either don't have FallbackTryNoProxy or $i == 1 (means we tried 0 and 1).
 				}
 			}
