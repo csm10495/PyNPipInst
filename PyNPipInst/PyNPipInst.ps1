@@ -84,10 +84,21 @@ function InstallPip ($Proxy) {
 	InstallPip($Proxy) - Attempts to install Pip via the given proxy.
 	#>
 	if (DownloadPip $Proxy){
-		Write-Host "Installing Pip..."
-		Start-Process -Wait "C:\Python27\python.exe " -ArgumentList ($env:temp + "/get-pip.py") -NoNewWindow
-		Write-Host "Installing Pip... Completed"
-		return $TRUE
+		if ($Proxy -ne $FALSE) {
+			Write-Host "Installing Pip via proxy..."
+			$Arguments = ($env:temp + "/get-pip.py --proxy=" + $Proxy) 
+		} else {
+			Write-Host "Installing Pip..."
+			$Arguments = ($env:temp + "/get-pip.py") 
+		}
+		$RetProcess = Start-Process -Wait "C:\Python27\python.exe " -ArgumentList $Arguments -NoNewWindow -PassThru
+		if ($RetProcess.ExitCode -eq 0) {
+			Write-Host "Installing Pip... Completed"
+			return $TRUE
+		} else {
+			Write-Host "Installing Pip... Failed!"
+			return $FALSE
+		}
 	}
 	return $FALSE
 }
@@ -145,15 +156,18 @@ if ($PythonVersionSplit.Length -eq 3){
 			Remove-Item c:\python27_old* -recurse
 		}
 		$Complete = $FALSE
-
+		# todo... allow semicolon list of proxies for this list with fallback to normal at the end
 		For ($i=0; $i -le 1; $i++) {
 			Try {
 				if ($OverwritePython -eq $TRUE) {
 					BackupOldPython
 					InstallPython $Proxy $X86Python $PythonVersion
+					$OverwritePython = $FALSE # don't do this again if we fail later
 				}
 				if ($OverwritePip -eq $TRUE) {
-					InstallPip $Proxy
+					if (InstallPip $Proxy -eq $FALSE) {
+						throw "Pip Install Failed!"
+					}
 				}
 				if ($InstallModulesWithPip -eq $TRUE) {
 					InstallModulesFromPip $Proxy
@@ -174,7 +188,7 @@ if ($PythonVersionSplit.Length -eq 3){
 							  $_.FullyQualifiedErrorId
 					Write-Host ($FormatString -f $Fields) # format the exception to print it, but do not throw
 					Write-Host "Because of the above, about to retry without a proxy... since we failed and FallbackTryNoProxy is set to False"
-					$Proxy = False # try without proxy
+					$Proxy = $False # try without proxy
 				} else {
 					Write-Host "Failed on final try! About to throw (and fail the script)!"
 					throw # pass up current exception as we have no way to try again (either don't have FallbackTryNoProxy or $i == 1 (means we tried 0 and 1).
