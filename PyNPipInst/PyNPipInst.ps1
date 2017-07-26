@@ -1,5 +1,4 @@
-﻿#requires –runasadministrator
-#author Charles Machalow
+﻿#author Charles Machalow
 #about A script to install Python 2.7 and Pip in an automated fashion with some picked out modules via Pip.
 
 Param(
