@@ -1,3 +1,4 @@
 version: 1.0.{build}
 test_script:
 - cmd: powershell Set-ExecutionPolicy Unrestricted && powershell -version 2 ./PyNPipInst/PyNPipInst.ps1"
+build: off
