@@ -15,6 +15,13 @@ Param(
 
 $ErrorActionPreference = "Stop" # Stop on first error
 
+function IsAdmin() {
+	<#
+	IsAdmin() - Returns $TRUE if the script is being run as an admin
+	#>
+	return ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+}
+
 function DownloadPython ($Proxy, $X86Python, $PythonVersion) {
 	<#
 	DownloadPython($Proxy, $X86Python, $PythonVersion) - Attempts to download Python via the given proxy. Downloading x86 vs x64 depnds on the X86Python parameter.
@@ -146,91 +153,97 @@ function AddPythonToPath {
 }
 
 # 'Main'
-$PythonVersionSplit = $PythonVersion.split(".")
 
-# Qualify the Proxy parameter
-$ProxiesSplit = @()
-if ($Proxy -eq $FALSE){
-	$ProxiesSplit += @($False) #no proxy for one round
-} else {
-	$ProxiesSplit += $Proxy.split(";") # Make sure to use double quotes with inside single quotes in the param "'p1;p2'"
-	if ($FallbackTryNoProxy -eq $TRUE) {
-		$ProxiesSplit += $FALSE # add False value to fallback to not using a proxy
-	}
-}
+if (IsAdmin) { # Make sure we have admin
+	$PythonVersionSplit = $PythonVersion.split(".")
 
-if ($PythonVersionSplit.Length -eq 3){
-	$PythonMajor = [convert]::ToInt16($PythonVersionSplit[0])
-	$PythonMinor = [convert]::ToInt16($PythonVersionSplit[1])
-	if ($PythonMajor -eq 2 -and $PythonMinor -eq 7){
-		if ($DeletePythonBackups -eq $TRUE) {
-			Remove-Item c:\python27_old* -recurse
+	# Qualify the Proxy parameter
+	$ProxiesSplit = @()
+	if ($Proxy -eq $FALSE){
+		$ProxiesSplit += @($False) #no proxy for one round
+	} else {
+		$ProxiesSplit += $Proxy.split(";") # Make sure to use double quotes with inside single quotes in the param "'p1;p2'"
+		if ($FallbackTryNoProxy -eq $TRUE) {
+			$ProxiesSplit += $FALSE # add False value to fallback to not using a proxy
 		}
+	}
 
-		$Complete = $FALSE
+	if ($PythonVersionSplit.Length -eq 3){
+		$PythonMajor = [convert]::ToInt16($PythonVersionSplit[0])
+		$PythonMinor = [convert]::ToInt16($PythonVersionSplit[1])
+		if ($PythonMajor -eq 2 -and $PythonMinor -eq 7){
+			if ($DeletePythonBackups -eq $TRUE) {
+				Remove-Item c:\python27_old* -recurse
+			}
 
-		For ($i=0; $i -lt $ProxiesSplit.Length; $i++) {
-			$Proxy = $ProxiesSplit[$i] # set proxy value
-			Try {
-				if ($OverwritePython -eq $TRUE) {
-					BackupOldPython
-					InstallPython $Proxy $X86Python $PythonVersion
-					$OverwritePython = $FALSE # don't do this again if we fail later
-				}
-				if ($OverwritePip -eq $TRUE) {
-					if ((InstallPip $Proxy) -eq $FALSE) {
-						throw "Pip Install Failed!"
+			$Complete = $FALSE
+
+			For ($i=0; $i -lt $ProxiesSplit.Length; $i++) {
+				$Proxy = $ProxiesSplit[$i] # set proxy value
+				Try {
+					if ($OverwritePython -eq $TRUE) {
+						BackupOldPython
+						InstallPython $Proxy $X86Python $PythonVersion
+						$OverwritePython = $FALSE # don't do this again if we fail later
+					}
+					if ($OverwritePip -eq $TRUE) {
+						if ((InstallPip $Proxy) -eq $FALSE) {
+							throw "Pip Install Failed!"
+						} else {
+							$OverwritePip = $FALSE # don't do this again if we fail later
+						}
+					}
+					if ($InstallModulesWithPip -eq $TRUE) {
+						InstallModulesFromPip $Proxy
+					}
+					if ($AddToPath -eq $TRUE) {
+						AddPythonToPath
+					}
+					$Complete = $TRUE
+				} Catch {
+					if ($Proxy -ne $ProxiesSplit[$ProxiesSplit.Length - 1]) {
+						$FormatString = "Warning: {0} : {1}`n{2}`n" +
+						"    + Warning CategoryInfo          : {3}`n" +
+						"    + Warning FullyQualifiedErrorId : {4}`n"
+						$Fields = $_.InvocationInfo.MyCommand.Name,
+								  $_.ErrorDetails.Message,
+								  $_.InvocationInfo.PositionMessage,
+								  $_.CategoryInfo.ToString(),
+								  $_.FullyQualifiedErrorId
+						Write-Host ($FormatString -f $Fields) # format the exception to print it, but do not throw
+						Write-Host ("Because of the above, about to retry with " + $ProxiesSplit[$i + 1])
+						$Proxy = $False # try without proxy
 					} else {
-						$OverwritePip = $FALSE # don't do this again if we fail later
+						Write-Host "Failed on final try! About to throw (and fail the script)!"
+						throw # pass up current exception as we have no way to try again (either don't have FallbackTryNoProxy or $i == 1 (means we tried 0 and 1).
 					}
 				}
-				if ($InstallModulesWithPip -eq $TRUE) {
-					InstallModulesFromPip $Proxy
-				}
-				if ($AddToPath -eq $TRUE) {
-					AddPythonToPath
-				}
-				$Complete = $TRUE
-			} Catch {
-				if ($Proxy -ne $ProxiesSplit[$ProxiesSplit.Length - 1]) {
-					$FormatString = "Warning: {0} : {1}`n{2}`n" +
-					"    + Warning CategoryInfo          : {3}`n" +
-					"    + Warning FullyQualifiedErrorId : {4}`n"
-					$Fields = $_.InvocationInfo.MyCommand.Name,
-							  $_.ErrorDetails.Message,
-							  $_.InvocationInfo.PositionMessage,
-							  $_.CategoryInfo.ToString(),
-							  $_.FullyQualifiedErrorId
-					Write-Host ($FormatString -f $Fields) # format the exception to print it, but do not throw
-					Write-Host ("Because of the above, about to retry with " + $ProxiesSplit[$i + 1])
-					$Proxy = $False # try without proxy
-				} else {
-					Write-Host "Failed on final try! About to throw (and fail the script)!"
-					throw # pass up current exception as we have no way to try again (either don't have FallbackTryNoProxy or $i == 1 (means we tried 0 and 1).
+				if ($Complete -eq $TRUE) {
+					break # Done!
 				}
 			}
-			if ($Complete -eq $TRUE) {
-				break # Done!
+
+			if ($Complete -eq $FALSE) {
+				Write-Host "This shouldn't be possible but Complete == False... though the loop completed... what?"
+				exit 3 # not complete? something went wrong... though I thought it would have thrown above
 			}
-		}
 
-		if ($Complete -eq $FALSE) {
-			Write-Host "This shouldn't be possible but Complete == False... though the loop completed... what?"
-			exit 3 # not complete? something went wrong... though I thought it would have thrown above
-		}
-
-		# Done!
-		if ($X86Python -eq $TRUE) {
-			Write-Host "Done Configuring Python x86!"
+			# Done!
+			if ($X86Python -eq $TRUE) {
+				Write-Host "Done Configuring Python x86!"
+			} else {
+				Write-Host "Done Configuring Python x64!"
+			}
 		} else {
-			Write-Host "Done Configuring Python x64!"
+			Write-Host "Only Python 2.7.X is supported!"
+			exit 2
 		}
 	} else {
-		Write-Host "Only Python 2.7.X is supported!"
-		exit 2
+		Write-Host "Python version given was invalid, couldn't determine major/minor version"
+		exit 1
 	}
-} else {
-	Write-Host "Python version given was invalid, couldn't determine major/minor version"
-	exit 1
+} else { # else if we don't have admin
+	Write-Host "Didn't detect admin privileges. Please re-run as admin!"
+	exit 4
 }
 
