@@ -1,4 +1,7 @@
 version: 1.0.{build}
 test_script:
-- cmd: powershell Set-ExecutionPolicy Unrestricted && powershell -version 2 ./PyNPipInst/PyNPipInst.ps1"
+  - cmd: powershell Set-ExecutionPolicy Unrestricted && powershell -version 2 ./PyNPipInst/PyNPipInst.ps1"
+  - cmd: python -c "from ctypes import *; assert sizeof(c_void_p) == 4"
+  - cmd: powershell -version 2 ./PyNPipInst/PyNPipInst.ps1 -X86Python $FALSE"
+  - cmd: python -c "from ctypes import *; assert sizeof(c_void_p) == 8"
 build: off
