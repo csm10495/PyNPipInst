@@ -53,6 +53,7 @@ function DownloadPip ($Proxy) {
 	#>
 	$WebClient = New-Object System.Net.WebClient
 	$DLLocation = $env:temp + "/get-pip.py"
+	[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 	if ($Proxy -ne $FALSE){
 		Write-Host ("Proxy is set to (for Pip): " + $Proxy)
