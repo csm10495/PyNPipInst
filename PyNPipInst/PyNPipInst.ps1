@@ -1,4 +1,4 @@
-﻿#author Charles Machalow
+#author Charles Machalow
 #about A script to install Python 2.7 and Pip in an automated fashion with some picked out modules via Pip.
 
 Param(
@@ -53,7 +53,6 @@ function DownloadPip ($Proxy) {
 	#>
 	$WebClient = New-Object System.Net.WebClient
 	$DLLocation = $env:temp + "/get-pip.py"
-	[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 	if ($Proxy -ne $FALSE){
 		Write-Host ("Proxy is set to (for Pip): " + $Proxy)
@@ -156,6 +155,10 @@ function AddPythonToPath {
 # 'Main'
 
 if (IsAdmin) { # Make sure we have admin
+
+	# ALlow us to use any security protocol
+	[Net.ServicePointManager]::SecurityProtocol = [System.Enum]::GetNames('Net.SecurityProtocolType') -join ","
+
 	$PythonVersionSplit = $PythonVersion.split(".")
 
 	# Qualify the Proxy parameter
