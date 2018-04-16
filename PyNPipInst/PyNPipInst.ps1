@@ -114,7 +114,7 @@ function InstallModulesFromPip ($Proxy) {
 	InstallModulesFromPip($Proxy) - Attempts to install modules via Pip via the given proxy.
 	#>
 	Write-Host "Installing Modules via Pip..."
-	$arguments = "-m pip install wget pyserial==2.7 pytest pypiwin32==219 pycryptodome xlrd numpy pyreadline pyinstaller psutil pyyaml mkdocs markdown-fenced-code-tabs mock colorama coverage cffi pylint pytest-cov zmq protobuf wmi pandas nose paramiko prettytable"
+	$arguments = "-m pip install wget pyserial==2.7 pytest pypiwin32==219 pycryptodome xlrd numpy pyreadline pyinstaller psutil pyyaml mkdocs markdown-fenced-code-tabs mock colorama coverage cffi pylint pytest-cov zmq protobuf wmi pandas nose paramiko prettytable --disable-pip-version-check"
 
 	if ($Proxy -ne $FALSE){
 		$arguments = $arguments + "  --proxy=" + $Proxy
