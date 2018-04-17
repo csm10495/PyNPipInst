@@ -4,7 +4,8 @@
 Param(
 	[string]$Proxy=$FALSE,
 	[bool]$OverwritePython=$TRUE,
-	[bool]$OverwritePip=$TRUE,
+	[bool]$OverwritePip=$FALSE,
+	[bool]$UpdatePipViaPip=$TRUE,
 	[bool]$DeletePythonBackups=$FALSE,
 	[bool]$AddToPath=$TRUE,
 	[bool]$InstallModulesWithPip=$TRUE,
@@ -109,6 +110,27 @@ function InstallPip ($Proxy) {
 	return $FALSE
 }
 
+function UpdatePip($Proxy) {
+	<#
+	UpdatePip($Proxy) - Attempts to update Pip via the given proxy (using an existing pip).
+	#>
+	if ($Proxy -ne $FALSE) {
+		Write-Host "Updating Pip via proxy..."
+		$Arguments = ("-m pip install pip -U --proxy=" + $Proxy) 
+	} else {
+		Write-Host "Updating Pip..."
+		$Arguments = ("-m pip install pip -U") 
+	}
+	$RetProcess = Start-Process -Wait "C:\Python27\python.exe " -ArgumentList $Arguments -NoNewWindow -PassThru
+	if ($RetProcess.ExitCode -eq 0) {
+		Write-Host "Updating Pip... Completed"
+		return $TRUE
+	} else {
+		Write-Host "Updating Pip... Failed!"
+		return $FALSE
+	}
+}
+
 function InstallModulesFromPip ($Proxy) {
 	<#
 	InstallModulesFromPip($Proxy) - Attempts to install modules via Pip via the given proxy.
@@ -177,6 +199,7 @@ if (IsAdmin) { # Make sure we have admin
 		$PythonMinor = [convert]::ToInt16($PythonVersionSplit[1])
 		if ($PythonMajor -eq 2 -and $PythonMinor -eq 7){
 			if ($DeletePythonBackups -eq $TRUE) {
+				Write-Host "Removing Python27 Backups"
 				Remove-Item c:\python27_old* -recurse
 			}
 
@@ -196,6 +219,9 @@ if (IsAdmin) { # Make sure we have admin
 						} else {
 							$OverwritePip = $FALSE # don't do this again if we fail later
 						}
+					}
+					if ($UpdatePipViaPip -eq $TRUE) {
+						UpdatePip $Proxy
 					}
 					if ($InstallModulesWithPip -eq $TRUE) {
 						InstallModulesFromPip $Proxy
