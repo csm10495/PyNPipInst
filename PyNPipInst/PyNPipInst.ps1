@@ -4,7 +4,7 @@
 Param(
 	[string]$Proxy=$FALSE,
 	[bool]$OverwritePython=$TRUE,
-	[bool]$OverwritePip=$FALSE,
+	[bool]$EnsurePip=$True,
 	[bool]$UpdatePipViaPip=$TRUE,
 	[bool]$DeletePythonBackups=$FALSE,
 	[bool]$AddToPath=$TRUE,
@@ -136,7 +136,7 @@ function InstallModulesFromPip ($Proxy) {
 	InstallModulesFromPip($Proxy) - Attempts to install modules via Pip via the given proxy.
 	#>
 	Write-Host "Installing Modules via Pip..."
-	$arguments = "-m pip install wget pyserial==2.7 pytest pypiwin32==219 pycryptodome xlrd numpy pyreadline pyinstaller psutil pyyaml mkdocs markdown-fenced-code-tabs mock colorama coverage cffi pylint pytest-cov zmq protobuf wmi pandas nose paramiko prettytable --disable-pip-version-check"
+	$arguments = "-m pip install requests[security] requests wget pyserial==2.7 pytest pypiwin32==219 pycryptodome xlrd numpy pyreadline pyinstaller psutil pyyaml mkdocs markdown-fenced-code-tabs mock colorama coverage cffi pylint pytest-cov zmq protobuf wmi pandas nose paramiko prettytable --disable-pip-version-check"
 
 	if ($Proxy -ne $FALSE){
 		$arguments = $arguments + "  --proxy=" + $Proxy
@@ -145,6 +145,25 @@ function InstallModulesFromPip ($Proxy) {
 	Start-Process -Wait "C:\Python27\python.exe" -ArgumentList $arguments -NoNewWindow
 	Write-Host "Installing Modules via Pip... Complete"
 	return $TRUE
+}
+
+function IsPipInstalled() {
+	<#
+	IsPipInstalled() - Returns True if pip is installed otherwise False
+	#>
+	Write-Host "Checking if Pip is Installed... "
+	$out1 = "_out1.txt"
+	$out2 = "_out2.txt"
+	$Arguments = "-m pip"
+	$RetProcess = Start-Process -Wait "C:\Python27\python.exe " -ArgumentList $Arguments -NoNewWindow -PassThru -RedirectStandardError $out1 -RedirectStandardOutput $out2
+	Remove-Item "_out*.txt"
+	if ($RetProcess.ExitCode -eq 0) {
+		Write-Host "Checking if Pip is Installed... Is Installed"
+		return $TRUE
+	} else {
+		Write-Host "Checking if Pip is Installed... Is Not Installed (Yet)"
+		return $FALSE
+	}
 }
 
 function BackupOldPython {
@@ -210,14 +229,19 @@ if (IsAdmin) { # Make sure we have admin
 				Try {
 					if ($OverwritePython -eq $TRUE) {
 						BackupOldPython
-						InstallPython $Proxy $X86Python $PythonVersion
-						$OverwritePython = $FALSE # don't do this again if we fail later
-					}
-					if ($OverwritePip -eq $TRUE) {
-						if ((InstallPip $Proxy) -eq $FALSE) {
-							throw "Pip Install Failed!"
+						if ((InstallPython $Proxy $X86Python $PythonVersion) -eq $TRUE) {
+							$OverwritePython = $FALSE # don't do this again if we fail later
 						} else {
-							$OverwritePip = $FALSE # don't do this again if we fail later
+							throw "Python Install Failed!"
+						}
+					}
+					if ($EnsurePip -eq $TRUE) {
+						if ((IsPipInstalled) -eq $FALSE) {
+							if ((InstallPip $Proxy) -eq $FALSE) {
+								throw "Pip Install Failed!"
+							} else {
+								$EnsurePip = $FALSE # don't do this again if we fail later
+							}
 						}
 					}
 					if ($UpdatePipViaPip -eq $TRUE) {
