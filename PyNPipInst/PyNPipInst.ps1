@@ -11,7 +11,8 @@ Param(
 	[bool]$InstallModulesWithPip=$TRUE,
 	[bool]$X86Python=$TRUE,
 	[bool]$FallbackTryNoProxy=$FALSE, # If we fail with the proxy try, without
-	[string]$PythonVersion="2.7.13"
+	[string]$PythonVersion="2.7.13",
+	[string]$PipModules="wget pyserial==2.7 pytest pypiwin32==219 pycryptodome xlrd numpy pyreadline pyinstaller psutil pyyaml mkdocs markdown-fenced-code-tabs mock colorama coverage cffi pylint pytest-cov zmq protobuf wmi pandas nose paramiko prettytable"
 	)
 
 $ErrorActionPreference = "Stop" # Stop on first error
@@ -93,10 +94,10 @@ function InstallPip ($Proxy) {
 	if (DownloadPip $Proxy){
 		if ($Proxy -ne $FALSE) {
 			Write-Host "Installing Pip via proxy..."
-			$Arguments = ($env:temp + "/get-pip.py --proxy=" + $Proxy) 
+			$Arguments = ($env:temp + "/get-pip.py --proxy=" + $Proxy)
 		} else {
 			Write-Host "Installing Pip..."
-			$Arguments = ($env:temp + "/get-pip.py") 
+			$Arguments = ($env:temp + "/get-pip.py")
 		}
 		$RetProcess = Start-Process -Wait "C:\Python27\python.exe " -ArgumentList $Arguments -NoNewWindow -PassThru
 		if ($RetProcess.ExitCode -eq 0) {
@@ -116,10 +117,10 @@ function UpdatePip($Proxy) {
 	#>
 	if ($Proxy -ne $FALSE) {
 		Write-Host "Updating Pip via proxy..."
-		$Arguments = ("-m pip install pip -U --proxy=" + $Proxy) 
+		$Arguments = ("-m pip install pip -U --proxy=" + $Proxy)
 	} else {
 		Write-Host "Updating Pip..."
-		$Arguments = ("-m pip install pip -U") 
+		$Arguments = ("-m pip install pip -U")
 	}
 	$RetProcess = Start-Process -Wait "C:\Python27\python.exe " -ArgumentList $Arguments -NoNewWindow -PassThru
 	if ($RetProcess.ExitCode -eq 0) {
@@ -131,12 +132,12 @@ function UpdatePip($Proxy) {
 	}
 }
 
-function InstallModulesFromPip ($Proxy) {
+function InstallModulesFromPip ($Proxy, $PipModules) {
 	<#
-	InstallModulesFromPip($Proxy) - Attempts to install modules via Pip via the given proxy.
+	InstallModulesFromPip($Proxy, $PipModules) - Attempts to install modules via Pip via the given proxy.
 	#>
 	Write-Host "Installing Modules via Pip..."
-	$arguments = "-m pip install requests[security] requests wget pyserial==2.7 pytest pypiwin32==219 pycryptodome xlrd numpy pyreadline pyinstaller psutil pyyaml mkdocs markdown-fenced-code-tabs mock colorama coverage cffi pylint pytest-cov zmq protobuf wmi pandas nose paramiko prettytable --disable-pip-version-check"
+	$arguments = "-m pip install " + $PipModules + " --disable-pip-version-check"
 
 	if ($Proxy -ne $FALSE){
 		$arguments = $arguments + "  --proxy=" + $Proxy
@@ -248,7 +249,7 @@ if (IsAdmin) { # Make sure we have admin
 						UpdatePip $Proxy
 					}
 					if ($InstallModulesWithPip -eq $TRUE) {
-						InstallModulesFromPip $Proxy
+						InstallModulesFromPip $Proxy $PipModules
 					}
 					if ($AddToPath -eq $TRUE) {
 						AddPythonToPath
