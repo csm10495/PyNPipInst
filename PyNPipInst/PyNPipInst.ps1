@@ -137,7 +137,7 @@ function InstallModulesFromPip ($Proxy, $PipModules) {
 	InstallModulesFromPip($Proxy, $PipModules) - Attempts to install modules via Pip via the given proxy.
 	#>
 	Write-Host "Installing Modules via Pip..."
-	$arguments = "-m pip install " + $PipModules + " --disable-pip-version-check"
+	$arguments = "-m pip install " + $PipModules + " --disable-pip-version-check --no-warn-script-location"
 
 	if ($Proxy -ne $FALSE){
 		$arguments = $arguments + "  --proxy=" + $Proxy
