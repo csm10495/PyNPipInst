@@ -187,7 +187,7 @@ function AddPythonToPath {
 	#>
 	$PYPATH = "C:\Python27"
 	if (!$env:path.ToLower().contains($PYPATH.ToLower())) {
-		[Environment]::SetEnvironmentVariable("PATH", ($env:path + ";" + $PYPATH), "Machine")
+		[Environment]::SetEnvironmentVariable("PATH", ($PYPATH + ";" + $env:path), "Machine")
 		Write-Host "Python27 folder has been added to PATH."
 	} else {
 		Write-Host "Python27 folder is already in PATH. Not adding again."
